@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة فرقعة البالونات الملونة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* أنماط مخصصة للعبة */
+        body {
+            background-color: #87CEEB; /* لون سماء زاهي */
+            overflow: hidden; /* لمنع التمرير */
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif; /* خط مرح للأطفال */
+        }
+
+        .balloon {
+            position: absolute;
+            bottom: -150px;
+            width: 100px;
+            height: 120px;
+            border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.2);
+            /* إضافة خيط للبالون */
+        }
+        
+        .balloon::after {
+            content: '';
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            width: 2px;
+            height: 40px;
+            background-color: white;
+            transform: translateX(-50%);
+        }
+
+        .balloon:active {
+            transform: scale(0.9); /* تأثير النقر */
+        }
+
+        /* ألوان البالونات الزاهية */
+        .bg-red-balloon { background: radial-gradient(circle at 30% 30%, #ff6b6b, #ff0000); }
+        .bg-blue-balloon { background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe); }
+        .bg-green-balloon { background: radial-gradient(circle at 30% 30%, #43e97b, #38f9d7); }
+        .bg-yellow-balloon { background: radial-gradient(circle at 30% 30%, #fdfbfb, #f6d365); }
+        .bg-purple-balloon { background: radial-gradient(circle at 30% 30%, #a18cd1, #fbc2eb); }
+        .bg-orange-balloon { background: radial-gradient(circle at 30% 30%, #ff9a44, #fc6076); }
+
+        /* حركة صعود البالون */
+        @keyframes floatUp {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-50vh) rotate(5deg); }
+            100% { transform: translateY(-120vh) rotate(-5deg); }
+        }
+
+        .floating {
+            animation: floatUp linear forwards;
+        }
+
+        /* تأثير الفرقعة */
+        .pop-effect {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            pointer-events: none;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="white" stroke-width="5" stroke-dasharray="10, 10" opacity="0.8"/></svg>');
+            background-size: cover;
+            animation: popAnim 0.3s ease-out forwards;
+        }
+
+        @keyframes popAnim {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        /* نجوم المكافأة */
+        .star {
+            color: gold;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* رسالة مركزية (رائع، أحسنت) */
+        #feedback-message {
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-between p-4">
+
+    <!-- الرأس: التعليمات والنجوم -->
+    <div class="w-full max-w-2xl flex justify-between items-center bg-white bg-opacity-70 rounded-full py-3 px-6 shadow-lg z-10 mt-4 backdrop-blur-sm border-4 border-yellow-300">
+        <div id="stars-container" class="flex space-x-reverse space-x-2">
+            <!-- النجوم ستضاف هنا -->
+        </div>
+        <div class="text-3xl font-bold text-gray-800 text-center flex-grow">
+            اضغط على البالون: <span id="target-color-text" class="text-4xl text-red-500 mx-2 drop-shadow-md">أحمر</span>
+        </div>
+        <!-- زر كتم الصوت اختياري -->
+         <button id="sound-btn" class="text-2xl bg-blue-100 p-2 rounded-full hover:bg-blue-200">🔊</button>
+    </div>
+
+    <!-- رسالة التشجيع -->
+    <div id="feedback-message" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-6xl font-extrabold text-white opacity-0 drop-shadow-2xl z-20" style="text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">
+        رائع!
+    </div>
+
+    <!-- حاوية البالونات -->
+    <div id="game-container" class="relative w-full flex-grow">
+        <!-- البالونات ستتولد هنا ديناميكيًا -->
+    </div>
+
+    <script>
+        // إعداد الألوان الزاهية
+        const colors = [
+            { id: 'red', name: 'أحمر', bgClass: 'bg-red-balloon', textClass: 'text-red-600', hex: '#ff0000' },
+            { id: 'blue', name: 'أزرق', bgClass: 'bg-blue-balloon', textClass: 'text-blue-600', hex: '#0000ff' },
+            { id: 'green', name: 'أخضر', bgClass: 'bg-green-balloon', textClass: 'text-green-600', hex: '#008000' },
+            { id: 'yellow', name: 'أصفر', bgClass: 'bg-yellow-balloon', textClass: 'text-yellow-500', hex: '#ffd700' },
+            { id: 'purple', name: 'بنفسجي', bgClass: 'bg-purple-balloon', textClass: 'text-purple-600', hex: '#800080' },
+            { id: 'orange', name: 'برتقالي', bgClass: 'bg-orange-balloon', textClass: 'text-orange-500', hex: '#ffa500' }
+        ];
+
+        let targetColor = null;
+        let score = 0;
+        let gameInterval;
+        let soundEnabled = true;
+
+        // عناصر DOM
+        const gameContainer = document.getElementById('game-container');
+        const targetColorText = document.getElementById('target-color-text');
+        const starsContainer = document.getElementById('stars-container');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const soundBtn = document.getElementById('sound-btn');
+
+        // أصوات اللعبة (باستخدام Web Audio API لتجنب ملفات خارجية)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!soundEnabled || audioCtx.state === 'suspended') return;
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'pop') {
+                // صوت فرقعة قصير وعالي
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'yay') {
+                // صوت احتفال (نغمتين صاعدتين)
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                oscillator.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.1);
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.4);
+            } else if (type === 'wrong') {
+                // صوت خطأ لطيف (منخفض)
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        // اختيار لون جديد للهدف
+        function setNextTarget() {
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            targetColor = randomColor;
+            
+            targetColorText.textContent = targetColor.name;
+            targetColorText.className = `text-4xl mx-2 drop-shadow-md ${targetColor.textClass}`;
+            // إضافة تأثير نبض للنص
+            targetColorText.style.animation = 'none';
+            targetColorText.offsetHeight; /* trigger reflow */
+            targetColorText.style.animation = 'bounceIn 0.5s';
+        }
+
+        // إنشاء بالون واحد
+        function createBalloon() {
+            // التأكد من وجود بالونات من اللون الهدف بين الحين والآخر
+            let colorObj;
+            if (Math.random() > 0.4) {
+                colorObj = targetColor; // 60% احتمال ظهور اللون المطلوب لتسهيل اللعبة
+            } else {
+                colorObj = colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            const balloon = document.createElement('div');
+            balloon.className = `balloon ${colorObj.bgClass} floating`;
+            
+            // موقع عشوائي أفقيًا
+            const leftPos = Math.random() * 80 + 10; // بين 10% و 90%
+            balloon.style.left = `${leftPos}%`;
+            
+            // سرعة عشوائية للصعود (أبطأ للأطفال)
+            const duration = Math.random() * 4 + 5; // بين 5 و 9 ثواني
+            balloon.style.animationDuration = `${duration}s`;
+
+            // إضافة خصائص البيانات
+            balloon.dataset.colorId = colorObj.id;
+
+            // حدث النقر على البالون (يدعم اللمس والماوس)
+            const popHandler = (e) => {
+                e.preventDefault(); // منع السلوك الافتراضي المزدوج في الموبايل
+                
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                if (balloon.dataset.colorId === targetColor.id) {
+                    // إجابة صحيحة
+                    playSound('pop');
+                    setTimeout(() => playSound('yay'), 100);
+                    showPopEffect(balloon);
+                    addStar();
+                    showFeedback("رائع! 🌟", "#ffeb3b");
+                    setNextTarget(); // تغيير اللون المطلوب فوراً لتشويق أكثر
+                } else {
+                    // إجابة خاطئة
+                    playSound('wrong');
+                    showPopEffect(balloon, false); // فرقعة بدون نقاط
+                    showFeedback("حاول مرة أخرى!", "#ffcccb");
+                }
+                
+                balloon.remove(); // إزالة البالون
+            };
+
+            balloon.addEventListener('mousedown', popHandler);
+            balloon.addEventListener('touchstart', popHandler, {passive: false});
+
+            // إزالة البالون بعد خروجه من الشاشة لتنظيف الـ DOM
+            balloon.addEventListener('animationend', () => {
+                balloon.remove();
+            });
+
+            gameContainer.appendChild(balloon);
+        }
+
+        // تأثير الفرقعة البصري
+        function showPopEffect(element, isCorrect = true) {
+            const rect = element.getBoundingClientRect();
+            const pop = document.createElement('div');
+            pop.className = 'pop-effect';
+            pop.style.left = `${rect.left + rect.width / 2 - 75}px`; // تمركز التأثير
+            pop.style.top = `${rect.top + rect.height / 2 - 75}px`;
+            
+            // لون التأثير يطابق لون البالون
+            const colorBg = getComputedStyle(element).background;
+            
+            if(isCorrect) {
+                pop.style.backgroundImage = `radial-gradient(circle, transparent 20%, white 20%, white 30%, transparent 30%, transparent 40%, white 40%, white 50%, transparent 50%)`;
+            } else {
+                pop.style.backgroundImage = 'none'; // تأثير بسيط للخطأ
+                pop.style.backgroundColor = 'rgba(255,255,255,0.5)';
+                pop.style.borderRadius = '50%';
+            }
+
+            document.body.appendChild(pop);
+            setTimeout(() => pop.remove(), 300);
+        }
+
+        // إضافة نجمة للنتيجة
+        function addStar() {
+            score++;
+            const star = document.createElement('span');
+            star.className = 'star';
+            star.textContent = '⭐';
+            starsContainer.appendChild(star);
+            
+            // إعادة ضبط بعد 5 نجوم مع احتفال
+            if (score >= 5) {
+                setTimeout(() => {
+                    showFeedback("أنت بطل! 🏆", "#4CAF50", 2000);
+                    starsContainer.innerHTML = '';
+                    score = 0;
+                    playSound('yay');
+                    playSound('yay'); // تكرار للاحتفال
+                }, 1000);
+            }
+        }
+
+        // رسائل التشجيع (تظهر في المنتصف ثم تختفي)
+        function showFeedback(text, color, duration = 1000) {
+            feedbackMessage.textContent = text;
+            feedbackMessage.style.color = color;
+            feedbackMessage.style.opacity = '1';
+            feedbackMessage.style.transform = 'translate(-50%, -50%) scale(1.2)';
+            
+            setTimeout(() => {
+                feedbackMessage.style.opacity = '0';
+                feedbackMessage.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, duration);
+        }
+
+        // زر التحكم بالصوت
+        soundBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+            soundBtn.className = soundEnabled ? 'text-2xl bg-blue-100 p-2 rounded-full hover:bg-blue-200' : 'text-2xl bg-gray-300 p-2 rounded-full opacity-50';
+            if (soundEnabled && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        });
+
+        // بدء اللعبة
+        function startGame() {
+            setNextTarget();
+            
+            // السماح بالصوت عند أول تفاعل للمستخدم (سياسة المتصفحات)
+            document.body.addEventListener('click', () => {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            }, { once: true });
+            document.body.addEventListener('touchstart', () => {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            }, { once: true });
+
+            // توليد البالونات بشكل مستمر
+            gameInterval = setInterval(createBalloon, 1200); // كل ثانية وربع تقريباً
+        }
+
+        // تهيئة اللعبة عند تحميل الصفحة
+        window.onload = startGame;
+
+    </script>
+</body>
+</html>
