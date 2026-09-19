@@ -132,6 +132,7 @@ function SectionHeading({ eyebrow, title, description, action }: { eyebrow: stri
 
 export default function Home() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+  const displayName = "المهندسة هبه الزعيم الطراونة";
   const [activeCategory, setActiveCategory] = useState("الكل");
   const [search, setSearch] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -179,7 +180,7 @@ export default function Home() {
           <div className="header-actions">
             <button className="icon-button" onClick={() => toast.info("ستظهر تنبيهاتك هنا عند التسجيل في فصل جديد")} aria-label="التنبيهات"><Bell size={19} /></button>
             {authLoading ? <div className="auth-skeleton" /> : isAuthenticated ? (
-              <button className="profile-chip" onClick={() => toast.info(`أهلاً ${user?.name ?? "بك"}`)}><span>{(user?.name ?? "ن").slice(0, 1)}</span><small>{user?.name ?? "حسابي"}</small></button>
+              <button className="profile-chip" onClick={() => toast.info(`أهلاً ${displayName}`)}><span>ه</span><small>{displayName}</small></button>
             ) : <button className="login-button" onClick={() => startLogin()}>تسجيل الدخول <ArrowUpRight size={16} /></button>}
           </div>
         </div>
